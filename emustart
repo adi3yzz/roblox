@@ -7,102 +7,12 @@ local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local UserInputService = game:GetService("UserInputService")
 
--- Cache tables
-local avatarCache = {}
-local gameIconCache = {}
-local serverRegionCache = nil
-
 -- Get player info
 local player = Players.LocalPlayer
 local username = player.Name
 local displayName = player.DisplayName
 local userId = player.UserId
 local playerNameFormatted = string.format("%s (@%s)", displayName, username)
-
--- ✅ Avatar Thumbnail Cache
-function getAvatarThumbnail(UserId)
-	if avatarCache[UserId] then
-		return true, avatarCache[UserId]
-	end
-
-	local url = "https://thumbnails.roproxy.com/v1/users/avatar-headshot?userIds=" .. UserId .. "&size=180x180&format=Png&isCircular=false"
-	local response = HttpService:RequestAsync({ Url = url, Method = "GET" })
-
-	if response.Success then
-		local data = HttpService:JSONDecode(response.Body)
-		local imageUrl = data["data"][1]["imageUrl"]
-		avatarCache[UserId] = imageUrl
-		return true, imageUrl
-	else
-		return false, nil
-	end
-end
-
--- ✅ Game Icon Cache
-function getGameIcon(placeId)
-	if gameIconCache[placeId] then
-		return true, gameIconCache[placeId]
-	end
-
-	local url = "https://thumbnails.roproxy.com/v1/games/icons?universeIds=" .. placeId .. "&size=150x150&format=Png"
-	local response = HttpService:RequestAsync({ Url = url, Method = "GET" })
-
-	if response.Success then
-		local data = HttpService:JSONDecode(response.Body)
-		local info = data["data"][tostring(placeId)]
-		if info and info["imageUrl"] then
-			gameIconCache[placeId] = info["imageUrl"]
-			return true, info["imageUrl"]
-		end
-	end
-	return false, nil
-end
-
--- ✅ Server Region Cache
-function getServerRegion()
-	if serverRegionCache then
-		return serverRegionCache
-	end
-
-	-- Get public IP
-	local ok1, ipJson = pcall(function()
-		return HttpService:GetAsync("https://ipconfig.io/json")
-	end)
-
-	if not ok1 then
-		serverRegionCache = "Unknown"
-		return serverRegionCache
-	end
-
-	local ipData = HttpService:JSONDecode(ipJson)
-	local ip = ipData["ip"]
-	if not ip then
-		serverRegionCache = "Unknown"
-		return serverRegionCache
-	end
-
-	-- Lookup IP region
-	local ok2, regionJson = pcall(function()
-		return HttpService:GetAsync("https://ipapi.co/" .. ip .. "/json/")
-	end)
-
-	if not ok2 then
-		serverRegionCache = "Unknown"
-		return serverRegionCache
-	end
-
-	local regData = HttpService:JSONDecode(regionJson)
-	local regionStr = "Unknown"
-
-	if regData["region"] and regData["country_code"] then
-		regionStr = regData["region"] .. ", " .. regData["country_code"]
-	elseif regData["country_name"] then
-		regionStr = regData["country_name"]
-	end
-
-	serverRegionCache = regionStr
-	return regionStr
-end
 
 -- Device type
 local deviceType = "Unknown"
@@ -114,26 +24,20 @@ elseif UserInputService.KeyboardEnabled then
 	deviceType = "PC"
 end
 
--- Get info
-local avatarSuccess, avatarUrl = getAvatarThumbnail(userId)
-if not avatarSuccess then avatarUrl = nil end
-
+-- Get game info
 local gameSuccess, gameInfo = pcall(function()
 	return MarketplaceService:GetProductInfo(game.PlaceId)
 end)
 
 local gameName = gameSuccess and gameInfo.Name or "Unknown Game"
 local placeId = game.PlaceId
+local jobId = game.JobId or "Unknown"
 
-local gameIconSuccess, gameIconUrl = getGameIcon(placeId)
-if not gameIconSuccess then gameIconUrl = nil end
-
-local serverRegion = getServerRegion()
 local isoTime = os.date("!%Y-%m-%dT%H:%M:%SZ")
 
 -- Build Discord embed
 local embed = {
-	title = "🔁 Emulator Restart Event",
+	title = "🔁 Emulator Restart",
 	description = "**A Roblox emulator restarted and rejoined the game.**",
 	color = 0x3498DB,
 	fields = {
@@ -158,24 +62,16 @@ local embed = {
 			inline = true
 		},
 		{
-			name = "🌐 Server Region",
-			value = serverRegion,
+			name = "🆔 Server ID",
+			value = jobId,
 			inline = true
 		}
 	},
 	footer = {
-		text = "Delta Emulator Logger"
+		text = "Emulator Logger"
 	},
 	timestamp = isoTime
 }
-
-if avatarUrl then
-	embed.thumbnail = { url = avatarUrl }
-end
-
-if gameIconUrl then
-	embed.image = { url = gameIconUrl }
-end
 
 -- Send to Discord
 function SendEmbed(url, embed)
@@ -189,5 +85,4 @@ function SendEmbed(url, embed)
 	print("Embed sent.")
 end
 
--- ✅ Replace this with your actual webhook
 SendEmbed(webhookUrl, embed)
