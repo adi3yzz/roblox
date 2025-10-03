@@ -24,6 +24,9 @@ elseif UserInputService.KeyboardEnabled then
 	deviceType = "PC"
 end
 
+-- Server UID (using JobId)
+local serverUID = game.JobId or "Unknown"
+
 -- Get game info
 local gameSuccess, gameInfo = pcall(function()
 	return MarketplaceService:GetProductInfo(game.PlaceId)
@@ -31,7 +34,6 @@ end)
 
 local gameName = gameSuccess and gameInfo.Name or "Unknown Game"
 local placeId = game.PlaceId
-local jobId = game.JobId or "Unknown"
 
 local isoTime = os.date("!%Y-%m-%dT%H:%M:%SZ")
 
@@ -47,6 +49,11 @@ local embed = {
 			inline = true
 		},
 		{
+			name = "🆔 User ID",
+			value = tostring(userId),
+			inline = true
+		},
+		{
 			name = "💻 Device",
 			value = deviceType,
 			inline = true
@@ -54,7 +61,7 @@ local embed = {
 		{
 			name = "📍 Game",
 			value = gameName,
-			inline = false
+			inline = true
 		},
 		{
 			name = "🆔 Place ID",
@@ -62,8 +69,8 @@ local embed = {
 			inline = true
 		},
 		{
-			name = "🆔 Server ID",
-			value = jobId,
+			name = "🆔 Server UID",
+			value = serverUID,
 			inline = true
 		}
 	},
@@ -73,16 +80,17 @@ local embed = {
 	timestamp = isoTime
 }
 
--- Send to Discord
+-- Send to Discord (using HttpService:PostAsync with error handling)
 function SendEmbed(url, embed)
 	local payload = HttpService:JSONEncode({ embeds = { embed } })
-	local response = request({
-		Url = url,
-		Method = "POST",
-		Headers = { ["Content-Type"] = "application/json" },
-		Body = payload
-	})
-	print("Embed sent.")
+	local success, err = pcall(function()
+		HttpService:PostAsync(url, payload, Enum.HttpContentType.ApplicationJson)
+	end)
+	if success then
+		print("Embed sent successfully.")
+	else
+		warn("Failed to send embed:", err)
+	end
 end
 
 SendEmbed(webhookUrl, embed)
