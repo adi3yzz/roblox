@@ -1,11 +1,14 @@
 -- Wait for LocalPlayer
 repeat wait() until game.Players.LocalPlayer
 
--- Services
+-- Services 
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local UserInputService = game:GetService("UserInputService")
+
+-- Cache tables
+local gameIconCache = {}
 
 -- Get player info
 local player = Players.LocalPlayer
@@ -13,6 +16,26 @@ local username = player.Name
 local displayName = player.DisplayName
 local userId = player.UserId
 local playerNameFormatted = string.format("%s (@%s)", displayName, username)
+
+-- ✅ Game Icon Cache
+function getGameIcon(placeId)
+	if gameIconCache[placeId] then
+		return true, gameIconCache[placeId]
+	end
+
+	local url = "https://thumbnails.roproxy.com/v1/games/icons?universeIds=" .. placeId .. "&size=150x150&format=Png"
+	local response = HttpService:RequestAsync({ Url = url, Method = "GET" })
+
+	if response.Success then
+		local data = HttpService:JSONDecode(response.Body)
+		local info = data["data"][tostring(placeId)]
+		if info and info["imageUrl"] then
+			gameIconCache[placeId] = info["imageUrl"]
+			return true, info["imageUrl"]
+		end
+	end
+	return false, nil
+end
 
 -- Device type
 local deviceType = "Unknown"
@@ -24,16 +47,18 @@ elseif UserInputService.KeyboardEnabled then
 	deviceType = "PC"
 end
 
--- Server UID (using JobId)
-local serverUID = game.JobId or "Unknown"
-
--- Get game info
 local gameSuccess, gameInfo = pcall(function()
 	return MarketplaceService:GetProductInfo(game.PlaceId)
 end)
 
 local gameName = gameSuccess and gameInfo.Name or "Unknown Game"
 local placeId = game.PlaceId
+
+local gameIconSuccess, gameIconUrl = getGameIcon(placeId)
+if not gameIconSuccess then gameIconUrl = nil end
+
+-- Replace serverRegion with JobId
+local jobId = game.JobId
 
 local isoTime = os.date("!%Y-%m-%dT%H:%M:%SZ")
 
@@ -49,11 +74,6 @@ local embed = {
 			inline = true
 		},
 		{
-			name = "🆔 User ID",
-			value = tostring(userId),
-			inline = true
-		},
-		{
 			name = "💻 Device",
 			value = deviceType,
 			inline = true
@@ -61,7 +81,7 @@ local embed = {
 		{
 			name = "📍 Game",
 			value = gameName,
-			inline = true
+			inline = false
 		},
 		{
 			name = "🆔 Place ID",
@@ -69,8 +89,8 @@ local embed = {
 			inline = true
 		},
 		{
-			name = "🆔 Server UID",
-			value = serverUID,
+			name = "🆔 Job ID",
+			value = jobId,
 			inline = true
 		}
 	},
@@ -80,17 +100,22 @@ local embed = {
 	timestamp = isoTime
 }
 
--- Send to Discord (using HttpService:PostAsync with error handling)
+if gameIconUrl then
+	embed.image = { url = gameIconUrl }
+end
+
+-- Send to Discord
 function SendEmbed(url, embed)
 	local payload = HttpService:JSONEncode({ embeds = { embed } })
-	local success, err = pcall(function()
-		HttpService:PostAsync(url, payload, Enum.HttpContentType.ApplicationJson)
-	end)
-	if success then
-		print("Embed sent successfully.")
-	else
-		warn("Failed to send embed:", err)
-	end
+	local response = request({
+		Url = url,
+		Method = "POST",
+		Headers = { ["Content-Type"] = "application/json" },
+		Body = payload
+	})
+	print("Embed sent.")
 end
+
+-- ✅ Replace this with your actual webhook
 
 SendEmbed(webhookUrl, embed)
