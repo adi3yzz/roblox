@@ -17,26 +17,6 @@ local displayName = player.DisplayName
 local userId = player.UserId
 local playerNameFormatted = string.format("%s (@%s)", displayName, username)
 
--- ✅ Game Icon Cache
-function getGameIcon(placeId)
-	if gameIconCache[placeId] then
-		return true, gameIconCache[placeId]
-	end
-
-	local url = "https://thumbnails.roproxy.com/v1/games/icons?universeIds=" .. placeId .. "&size=150x150&format=Png"
-	local response = HttpService:RequestAsync({ Url = url, Method = "GET" })
-
-	if response.Success then
-		local data = HttpService:JSONDecode(response.Body)
-		local info = data["data"][tostring(placeId)]
-		if info and info["imageUrl"] then
-			gameIconCache[placeId] = info["imageUrl"]
-			return true, info["imageUrl"]
-		end
-	end
-	return false, nil
-end
-
 -- Device type
 local deviceType = "Unknown"
 if UserInputService.TouchEnabled then
@@ -64,7 +44,7 @@ local isoTime = os.date("!%Y-%m-%dT%H:%M:%SZ")
 
 -- Build Discord embed
 local embed = {
-	title = "🔁 Emulator Restart",
+	title = "🔁 " .. displayName .. " Emulator",
 	description = "**A Roblox emulator restarted and rejoined the game.**",
 	color = 0x3498DB,
 	fields = {
@@ -99,10 +79,6 @@ local embed = {
 	},
 	timestamp = isoTime
 }
-
-if gameIconUrl then
-	embed.image = { url = gameIconUrl }
-end
 
 -- Send to Discord
 function SendEmbed(url, embed)
