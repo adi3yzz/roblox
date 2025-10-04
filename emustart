@@ -1,4 +1,4 @@
--- Wait for LocalPlayer
+-- Wait for LocalPlayer 
 repeat wait() until game.Players.LocalPlayer
 
 -- Services 
@@ -6,9 +6,6 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local UserInputService = game:GetService("UserInputService")
-
--- Cache tables
-local gameIconCache = {}
 
 -- Get player info
 local player = Players.LocalPlayer
@@ -27,24 +24,19 @@ elseif UserInputService.KeyboardEnabled then
 	deviceType = "PC"
 end
 
+-- Get game info
 local gameSuccess, gameInfo = pcall(function()
 	return MarketplaceService:GetProductInfo(game.PlaceId)
 end)
 
 local gameName = gameSuccess and gameInfo.Name or "Unknown Game"
 local placeId = game.PlaceId
-
-local gameIconSuccess, gameIconUrl = getGameIcon(placeId)
-if not gameIconSuccess then gameIconUrl = nil end
-
--- Replace serverRegion with JobId
 local jobId = game.JobId
-
 local isoTime = os.date("!%Y-%m-%dT%H:%M:%SZ")
 
 -- Build Discord embed
 local embed = {
-	title = displayName .. " Emulator",
+	title = displayName .. " Emulator",  -- Display name as embed title
 	description = "**A Roblox emulator restarted and rejoined the game.**",
 	color = 0x3498DB,
 	fields = {
@@ -93,5 +85,4 @@ function SendEmbed(url, embed)
 end
 
 -- ✅ Replace this with your actual webhook
-
 SendEmbed(webhookUrl, embed)
