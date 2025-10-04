@@ -44,7 +44,7 @@ local isoTime = os.date("!%Y-%m-%dT%H:%M:%SZ")
 
 -- Build Discord embed
 local embed = {
-	title = "🔁 " .. displayName .. " Emulator",
+	title = displayName .. " Emulator",
 	description = "**A Roblox emulator restarted and rejoined the game.**",
 	color = 0x3498DB,
 	fields = {
